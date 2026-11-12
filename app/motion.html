@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion (animation skills)</title>
+<script>document.documentElement.classList.toggle('fixed', new URLSearchParams(location.search).has('fixed'));</script>
+<style>
+  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); }
+  body { margin: 0; padding: 1.5rem; font: 15px/1.5 system-ui, sans-serif; background: #f6f6f7; color: #111; }
+  section { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; max-width: 40rem; position: relative; }
+  h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; margin: 0 0 0.5rem; }
+  button { font: inherit; padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+  [hidden] { display: none !important; }
+  .popover, .palette, .modal { position: absolute; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 8px 24px #0002; padding: 0.5rem; z-index: 5; }
+  .popover { top: 5.5rem; left: 1rem; width: 12rem; }
+  .palette { top: 3rem; left: 50%; width: 20rem; margin-left: -10rem; }
+  .modal { position: fixed; top: 30%; left: 50%; width: 18rem; margin-left: -9rem; padding: 1.5rem; }
+  .toasts { position: fixed; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .toast { background: #111; color: #fff; padding: 0.6rem 1rem; border-radius: 10px; }
+  .bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
+  .bar-fill { height: 100%; background: #6366f1; }
+  .results { display: grid; gap: 0.5rem; margin-top: 0.5rem; }
+  .result { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.5rem; }
+  .pill { display: inline-block; background: #eef2ff; color: #3730a3; border-radius: 99px; padding: 0 0.5rem; font-size: 0.75rem; }
+  .live { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #16a34a; }
+  .hold { position: relative; overflow: hidden; }
+  .hold-fill { position: absolute; inset: 0; background: #fecaca; clip-path: inset(0 100% 0 0); }
+  .hold span { position: relative; }
+  .card-link { display: block; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.75rem; color: inherit; text-decoration: none; }
+
+  /* ---------- Before: motion that runs, but feels wrong ---------- */
+  html:not(.fixed) .press { transition: all 300ms ease-in; }
+  html:not(.fixed) .press:hover { transform: scale(1.05); }
+  html:not(.fixed) .popover:not([hidden]) { animation: pop 400ms ease-in; transform-origin: center; }
+  html:not(.fixed) .palette:not([hidden]) { animation: pop 300ms ease-out; }
+  html:not(.fixed) .toast { animation: slide-in 400ms ease-in; }
+  html:not(.fixed) .bar-fill { width: 0; transition: width 250ms ease-out; }
+  html:not(.fixed) .bar-fill.done { width: 100%; }
+  html:not(.fixed) .result, html:not(.fixed) .results .pill { animation: rise 600ms ease-out; }
+  html:not(.fixed) .live { animation: pulse 1s ease-in-out infinite; }
+  html:not(.fixed) .hold-fill { transition: clip-path 300ms ease; }
+  html:not(.fixed) .hold:active .hold-fill { clip-path: inset(0 0 0 0); }
+  html:not(.fixed) .card-link { transition: all 300ms ease; }
+  html:not(.fixed) .card-link:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 24px #0002; }
+
+  /* ---------- After: the review-animations bar ---------- */
+  .fixed .press { transition: transform 160ms var(--ease-out); }
+  .fixed .press:active { transform: scale(0.97); }
+  .fixed .popover { transform-origin: top left; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out); }
+  .fixed .popover, .fixed .toast, .fixed .modal { @starting-style { opacity: 0; transform: scale(0.95); } }
+  .fixed .toast { transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out); @starting-style { transform: translateY(100%); } }
+  .fixed .modal { transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out); }
+  .fixed .bar-fill { transform: scaleX(0); transform-origin: left; transition: transform 250ms var(--ease-out); }
+  .fixed .bar-fill.done { transform: scaleX(1); }
+  .fixed .result { animation: rise 250ms var(--ease-out) backwards; animation-delay: calc(var(--i) * 50ms); }
+  .fixed .results .pill { animation: fade 250ms var(--ease-out) backwards; }
+  .fixed .hold-fill { transition: clip-path 200ms var(--ease-out); }
+  .fixed .hold:active .hold-fill { clip-path: inset(0 0 0 0); transition: clip-path 2s linear; }
+  .fixed .card-link { transition: border-color 150ms ease; }
+  @media (hover: hover) and (pointer: fine) {
+    .fixed .press:hover { background: #f3f4f6; }
+    .fixed .card-link:hover { border-color: #6366f1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fixed .popover, .fixed .toast, .fixed .modal { @starting-style { opacity: 0; transform: none; } }
+    .fixed .result { animation-name: fade; }
+  }
+
+  @keyframes pop { from { transform: scale(0); } }
+  @keyframes slide-in { from { transform: translateY(100%); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes pulse { 50% { transform: scale(1.4); opacity: 0.5; } }
+</style>
+</head>
+<body>
+  <section><h2>Press feedback</h2><button class="press">Save</button></section>
+  <section><h2>Dropdown</h2><button id="sort">Sort by</button>
+    <div class="popover" hidden role="menu"><div role="menuitem">Newest</div><div role="menuitem">Oldest</div><div role="menuitem">Name</div></div></section>
+  <section><h2>Command palette (⌘K / Ctrl+K)</h2><p>Press the shortcut.</p>
+    <div class="palette" hidden><input placeholder="Search commands" aria-label="Search commands"></div></section>
+  <section><h2>Toasts</h2><button id="notify">Notify</button></section>
+  <section><h2>Upload</h2><button id="upload">Upload</button><div class="bar"><div class="bar-fill"></div></div></section>
+  <section><h2>Search results</h2><button id="load">Load results</button><div class="results" aria-live="polite"></div></section>
+  <section><h2>Status</h2><span class="live" aria-label="Live"></span> Live</section>
+  <section><h2>Hold to delete</h2><button class="hold"><div class="hold-fill"></div><span>Hold to delete</span></button></section>
+  <section><h2>Settings</h2><button id="settings">Open settings</button></section>
+  <section><h2>Project card</h2><a class="card-link" href="#project">Q3 launch: 12 tasks</a></section>
+  <div class="modal" hidden role="dialog" aria-label="Settings"><p>Settings</p><button id="close-modal">Close</button></div>
+  <div class="toasts"></div>
+<script>
+  const $ = (s) => document.querySelector(s);
+  $('#sort').onclick = () => { $('.popover').hidden = !$('.popover').hidden; };
+  addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('.palette').hidden = !$('.palette').hidden; }
+  });
+  let n = 0;
+  $('#notify').onclick = () => {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.role = 'status'; t.textContent = `Saved (${++n})`;
+    $('.toasts').append(t);
+  };
+  $('#upload').onclick = () => $('.bar-fill').classList.add('done');
+  $('#load').onclick = () => {
+    $('.results').innerHTML = ['Design review', 'Q3 launch plan', 'Pricing page', 'Onboarding emails', 'Brand refresh']
+      .map((t, i) => `<div class="result" style="--i:${i}">${t} ${i === 0 ? '<span class="pill">New</span>' : ''}</div>`).join('');
+  };
+  $('#settings').onclick = () => { $('.modal').hidden = false; };
+  $('#close-modal').onclick = () => { $('.modal').hidden = true; };
+</script>
+</body>
+</html>

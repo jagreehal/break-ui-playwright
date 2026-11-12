@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mobile (mobile-native)</title>
+<script>
+  // Before/after decides the platform layer itself, so the meta tags are written here, before first layout.
+  const fixed = new URLSearchParams(location.search).has('fixed');
+  document.documentElement.classList.toggle('fixed', fixed);
+  document.write(fixed
+    ? `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+       <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+       <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a">
+       <meta name="color-scheme" content="light dark">`
+    : `<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+       <meta name="theme-color" content="#ffffff">`);
+</script>
+<style>
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; }
+  .app { display: flex; flex-direction: column; }
+  header { position: sticky; top: 0; background: #fff; padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
+  main { flex: 1; overflow-y: auto; padding: 1rem; }
+  label { display: block; margin: 0.5rem 0; }
+  input { display: block; width: 100%; box-sizing: border-box; padding: 0.5rem; margin-top: 0.25rem; }
+  .button { padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; font: inherit; }
+  .carousel { display: flex; gap: 0.5rem; overflow-x: auto; margin: 1rem 0; }
+  .slide { flex: 0 0 80%; height: 120px; border-radius: 12px; background: #e0e7ff; color: #1e1b4b; display: grid; place-items: center; }
+  .sheet-content { max-height: 160px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.5rem; }
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-around; background: #fff; border-top: 1px solid #e5e7eb; padding: 0.5rem; }
+
+  /* Before: a website in a browser */
+  html:not(.fixed) body { user-select: none; -webkit-user-select: none; }
+  html:not(.fixed) .app { height: 100vh; }
+  html:not(.fixed) input { font-size: 14px; }
+  html:not(.fixed) .button { transition: transform 150ms ease-out; }
+  html:not(.fixed) .button:hover { transform: scale(1.05); }
+
+  /* After: the mobile-native baseline */
+  .fixed { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+  .fixed body { overscroll-behavior: none; }
+  .fixed .app { height: 100dvh; }
+  .fixed input { font-size: 16px; }
+  .fixed .button, .fixed a { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .fixed .button { transition: transform 100ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .fixed .button:active { transform: scale(0.97); background: #f3f4f6; }
+  @media (hover: hover) and (pointer: fine) { .fixed .button:hover { background: #f9fafb; } }
+  .fixed header { padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)); }
+  .fixed .tabbar { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+  .fixed .carousel { scroll-snap-type: x mandatory; }
+  .fixed .slide { scroll-snap-align: start; }
+  .fixed .sheet-content { overscroll-behavior: contain; }
+  /* Both versions support dark mode; only the after version tells the status bar about it. */
+  @media (prefers-color-scheme: dark) {
+    body, header, .tabbar { background: #0a0a0a; color: #eee; border-color: #27272a; }
+    .button { background: #18181b; color: #eee; border-color: #3f3f46; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>Sign in</header>
+  <main>
+    <form onsubmit="event.preventDefault()">
+      <label>Email <input name="email" class="email"></label>
+      <label>Verification code <input name="code" class="code"></label>
+      <button class="button" type="submit">Continue</button>
+    </form>
+    <div class="carousel" aria-label="Plans"><div class="slide">Free</div><div class="slide">Pro</div><div class="slide">Team</div></div>
+    <div class="sheet-content" aria-label="Recent activity">
+      <p>Signed in on a new device.</p><p>Password changed.</p><p>Email confirmed.</p><p>Plan upgraded.</p><p>Invoice paid.</p><p>Team created.</p>
+    </div>
+  </main>
+  <nav class="tabbar"><a href="#home">Home</a><a href="#search">Search</a><a href="#me">Me</a></nav>
+</div>
+<script>
+  // After: the keyboard each field needs.
+  if (fixed) {
+    Object.assign(document.querySelector('.email'), { type: 'email', autocomplete: 'email', autocapitalize: 'none', enterKeyHint: 'next' });
+    Object.assign(document.querySelector('.code'), { inputMode: 'numeric', autocomplete: 'one-time-code', enterKeyHint: 'done' });
+  }
+</script>
+</body>
+</html>

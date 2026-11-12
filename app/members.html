@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Members (break-ui)</title>
+<style>
+  /* ---------- Before: built against kind demo data ---------- */
+  body { margin: 0; font: 0.875rem/1.4 system-ui, sans-serif; padding: 1rem 1rem 6rem; }
+  @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } }
+  header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  h1 { font-size: 1.25rem; margin: 0; word-break: break-all; }
+  .invite { width: 6rem; white-space: nowrap; overflow: hidden; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.member { position: relative; display: flex; align-items: center; gap: 0.75rem; height: 4rem; overflow: hidden;
+    padding: 0 3rem 0 0.75rem; margin-bottom: 0.5rem; border: 1px solid #ddd; border-radius: 0.5rem; background: #fff; }
+  .avatar { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #c7d2fe; color: #1e1b4b; display: grid; place-items: center; font-weight: 600; overflow: hidden; }
+  .avatar img { width: 100%; height: 100%; }
+  .text { flex: 1; }
+  .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; font-weight: 600; }
+  .email, .role { color: #555; }
+  .badge { background: #eef; border-radius: 99px; padding: 0.1rem 0.5rem; font-size: 0.75rem; }
+  .tag { background: #f3f4f6; border-radius: 4px; padding: 0 0.25rem; margin-right: 0.25rem; font-size: 0.75rem;
+    display: inline-block; max-width: 8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  .menu { position: absolute; right: 0.5rem; top: 1rem; opacity: 0; }
+  li.member:hover .menu { opacity: 1; }
+
+  /* ---------- After: the break-ui fixes (?fixed) ---------- */
+  :root.fixed { --bg: #f6f6f7; --card: #fff; --fg: #111; --muted: #555; --border: #ddd; --badge: #eef; --tag: #f3f4f6; }
+  @media (prefers-color-scheme: dark) { :root.fixed { --bg: #111; --card: #1c1c1f; --fg: #eee; --muted: #a1a1aa; --border: #333; --badge: #312e81; --tag: #27272a; } }
+  .fixed body { background: var(--bg); color: var(--fg); }
+  .fixed h1 { word-break: normal; overflow-wrap: anywhere; min-width: 0; }
+  .fixed header { flex-wrap: wrap; }
+  .fixed .invite { width: auto; min-width: 6rem; overflow: visible; white-space: normal; }
+  .fixed ul { max-width: 45rem; }
+  .fixed li.member { height: auto; min-height: 4rem; overflow: visible; align-items: flex-start; padding: 0.75rem;
+    background: var(--card); border-color: var(--border); }
+  .fixed .avatar { flex-shrink: 0; }
+  .fixed .avatar img { object-fit: cover; }
+  .fixed .text { min-width: 0; }
+  .fixed .name { white-space: normal; overflow: visible; line-height: 1.4; overflow-wrap: anywhere; }
+  .fixed .email { overflow-wrap: anywhere; }
+  .fixed .email, .fixed .role { color: var(--muted); }
+  .fixed .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; margin-top: 0.25rem; }
+  .fixed .badge { background: var(--badge); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fixed .tag { background: var(--tag); max-width: 100%; }
+  .fixed .count { font-variant-numeric: tabular-nums; }
+  .fixed .menu { position: static; flex-shrink: 0; margin-inline-start: auto; opacity: 1; }
+  @media (hover: hover) and (pointer: fine) {
+    .fixed li.member .menu { opacity: 0; }
+    .fixed li.member:hover .menu, .fixed li.member:focus-within .menu { opacity: 1; }
+  }
+  .fixed .skeleton { height: 4rem; border-radius: 0.5rem; background: var(--border); margin-bottom: 0.5rem; }
+
+  /* ---------- Phase 3: the dev-only data toggle. Chrome, not design. ---------- */
+  .toggle { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;
+    font: 12px system-ui, sans-serif; z-index: 10; width: max-content; max-width: calc(100vw - 2rem); }
+  .toggle div { display: flex; background: #e5e7eb; border-radius: 99px; padding: 2px; }
+  .toggle button { border: 0; background: none; border-radius: 99px; padding: 4px 10px; color: #111; font: inherit; }
+  .toggle button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 2px #0003; }
+</style>
+<script>
+  // Before/after switch for this experiment, set before render so nothing flashes.
+  document.documentElement.classList.toggle('fixed', new URLSearchParams(location.search).has('fixed'));
+</script>
+</head>
+<body>
+<div id="app">
+  <header><h1 id="workspace"></h1><span class="count" id="count"></span><button class="invite" id="invite"></button></header>
+  <ul id="members" aria-label="Members"></ul>
+</div>
+
+<nav class="toggle" aria-label="Dev data toggle">
+  <div role="group" aria-label="Data">
+    <button data-data="demo">Demo data</button><button data-data="worst">Worst case</button><button data-data="empty">Empty</button><button data-data="one">One</button><button data-data="huge">1,000 rows</button>
+  </div>
+  <div role="group" aria-label="Version">
+    <button data-fixed="">Before fixes</button><button data-fixed="1">After fixes</button>
+  </div>
+</nav>
+
+<script type="module">
+  const params = new URLSearchParams(location.search);
+  const fixed = params.has('fixed');
+  const data = params.get('data') ?? 'demo';
+  if (params.get('dir')) document.getElementById('app').dir = params.get('dir');
+
+  // Toggle wiring: state lives in the URL so a reload keeps it.
+  for (const b of document.querySelectorAll('.toggle button')) {
+    const isData = 'data' in b.dataset;
+    b.setAttribute('aria-pressed', String(isData ? b.dataset.data === data : !!b.dataset.fixed === fixed));
+    b.onclick = () => {
+      const p = new URLSearchParams(location.search);
+      if (isData) p.set('data', b.dataset.data); else b.dataset.fixed ? p.set('fixed', '') : p.delete('fixed');
+      location.search = p.toString().replace(/fixed=(&|$)/, 'fixed$1');
+    };
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+  // ----- Before: what was written against demo data -----
+  const before = {
+    initials: (name) => { const w = name.split(' '); return w[0][0] + (w.length > 1 ? w.at(-1)[0] : ''); },
+    count: (n, noun) => `${n} ${noun}s`,
+    since: (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 86400 ? `${Math.round(s / 3600)} hours ago` : `${Math.round(s / 86400)} days ago`; },
+    text: (s) => s, // innerHTML, unescaped
+    row: (m, h) => `
+      <li class="member">
+        <div class="avatar">${m.avatar ? `<img src="${m.avatar}" alt="">` : h.initials(m.name)}</div>
+        <div class="text">
+          <div class="name">${m.name}</div>
+          <div class="email">${m.email}</div>
+          <div class="role">${m.role || '—'}</div>
+        </div>
+        <span class="badge">${m.status === 'expired' ? `Invitation expired ${h.since(m.lastActive)}` : m.status}</span>
+        <span class="count">${h.count(m.projects, 'project')}</span>
+        <span class="since">${h.since(m.lastActive)}</span>
+        <span class="tags">${m.tags.map((t) => `<span class="tag">${t}</span>`).join('')}</span>
+        <button class="menu" aria-label="Actions">•••</button>
+      </li>`,
+  };
+
+  // ----- After: the fixes break-ui proposes -----
+  const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+  const firstGrapheme = (w) => [...seg.segment(w.replace(/^\P{L}+/u, ''))][0]?.segment ?? '';
+  const plural = new Intl.PluralRules('en');
+  const num = new Intl.NumberFormat('en');
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const date = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
+  const after = {
+    displayName: (m) => m.name?.trim().replace(/\s+/g, ' ') || m.email,
+    initials: (name) => {
+      const words = name.split(' ').filter((w) => /\p{L}/u.test(w) && !/^(?:[IVX]+|Jr\.?|Sr\.?)$/.test(w));
+      const pick = words.length > 1 ? [words[0], words.at(-1)] : words.slice(0, 1);
+      return pick.map((w) => firstGrapheme(w).toLocaleUpperCase('en')).join('');
+    },
+    count: (n, noun) => n == null ? '' : `${num.format(n)} ${plural.select(n) === 'one' ? noun : noun + 's'}`,
+    since: (iso) => {
+      const t = Date.parse(iso ?? '');
+      if (!t) return 'Never';
+      const s = Math.round((t - Date.now()) / 1000), abs = Math.abs(s);
+      if (abs < 45) return 'Just now';
+      if (abs < 3600) return rtf.format(Math.round(s / 60), 'minute');
+      if (abs < 86400) return rtf.format(Math.round(s / 3600), 'hour');
+      if (abs < 7 * 86400) return rtf.format(Math.round(s / 86400), 'day');
+      return date.format(t);
+    },
+    row: (m, h) => {
+      const name = h.displayName(m);
+      const badge = m.status === 'expired' ? `Invitation expired ${h.since(m.lastActive)}` : m.status;
+      const shown = m.tags.slice(0, 3);
+      return `
+      <li class="member">
+        <div class="avatar">${m.avatar ? `<img src="${esc(m.avatar)}" alt="" data-fallback="${esc(h.initials(name))}">` : esc(h.initials(name))}</div>
+        <div class="text">
+          <div class="name" dir="auto">${esc(name)}</div>
+          ${m.name?.trim() ? `<div class="email">${esc(m.email)}</div>` : ''}
+          ${m.role?.trim() ? `<div class="role" dir="auto">${esc(m.role.replace(/\s+/g, ' '))}</div>` : ''}
+          <div class="meta">
+            <span class="badge" title="${esc(badge)}">${esc(badge)}</span>
+            <span class="count">${h.count(m.projects, 'project')}</span>
+            <span class="since">${h.since(m.lastActive)}</span>
+            ${shown.map((t) => `<span class="tag" title="${esc(t)}">${esc(t)}</span>`).join('')}
+            ${m.tags.length > 3 ? `<span class="tag" title="${esc(m.tags.slice(3).join(', '))}">+${m.tags.length - 3}</span>` : ''}
+          </div>
+        </div>
+        <button class="menu" aria-label="Actions for ${esc(name)}">•••</button>
+      </li>`;
+    },
+  };
+
+  const h = fixed ? after : before;
+  const PAGE = 50;
+
+  if (fixed) $('members').innerHTML = '<li class="skeleton" aria-busy="true" aria-label="Loading members"></li>'.repeat(3);
+  try {
+    const res = await fetch(`/api/members?data=${encodeURIComponent(data)}`);
+    if (fixed && !res.ok) throw new Error(`HTTP ${res.status}`);
+    const { workspace, members } = await res.json();
+    $('workspace').textContent = workspace.name;
+    $('invite').textContent = workspace.inviteLabel;
+    $('count').textContent = h.count(members.length, 'member');
+    const shown = fixed ? members.slice(0, PAGE) : members;
+    $('members').innerHTML = shown.length
+      ? shown.map((m) => h.row(m, h)).join('') + (fixed && members.length > PAGE ? `<li class="more">Showing ${PAGE} of ${num.format(members.length)}</li>` : '')
+      : fixed ? '<li role="status">No members yet. Invite someone to get started.</li>' : '';
+    if (fixed) for (const img of document.querySelectorAll('.avatar img')) {
+      img.onerror = () => img.replaceWith(img.dataset.fallback);
+      if (img.complete && !img.naturalWidth) img.onerror();
+    }
+  } catch (e) {
+    if (!fixed) throw e;
+    $('members').innerHTML = `<li role="alert">Couldn't load members. <button onclick="location.reload()">Try again</button></li>`;
+  }
+  document.body.dataset.ready = '';
+</script>
+</body>
+</html>

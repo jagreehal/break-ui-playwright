@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheet (gestures, apple-design)</title>
+<script>document.documentElement.classList.toggle('fixed', new URLSearchParams(location.search).has('fixed'));</script>
+<style>
+  :root { --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  html, body { margin: 0; height: 100%; overflow: hidden; font: 15px/1.5 system-ui, sans-serif; background: #e5e7eb; }
+  main { padding: 1.5rem; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; height: 60vh; background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 32px #0003; }
+  .grab { display: flex; justify-content: center; align-items: center; }
+  .handle { width: 36px; height: 5px; border-radius: 3px; background: #d1d5db; margin: 8px 0; }
+  .content { padding: 0 1.5rem; }
+
+  /* Before: drag drives a CSS variable on the parent through a transition; closing is a keyframe animation. */
+  html:not(.fixed) .sheet { transform: translateY(var(--drag, 0px)); transition: transform 600ms ease-in; }
+  html:not(.fixed) .sheet.closing { animation: slide-down 500ms ease-in forwards; }
+  @keyframes slide-down { to { transform: translateY(100%); } }
+
+  /* After: the element is moved directly, the grab area is 44px tall and owns the vertical axis. */
+  .fixed .grab { height: 44px; touch-action: pan-x; cursor: grab; }
+  .fixed .grab[data-pressed] .handle { background: #9ca3af; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sheet</h1>
+  <button id="open">Open sheet</button>
+</main>
+<div class="sheet" role="dialog" aria-label="Share" hidden>
+  <div class="grab"><div class="handle"></div></div>
+  <div class="content"><h2>Share</h2><p>Drag down, or flick, to dismiss.</p><button id="close">Close</button></div>
+</div>
+<script>
+  const fixed = document.documentElement.classList.contains('fixed');
+  const sheet = document.querySelector('.sheet');
+  const grab = document.querySelector('.grab');
+  const handle = document.querySelector('.handle');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (!fixed) {
+    let dragging = false, startY = 0;
+    const root = document.documentElement;
+    const open = () => { sheet.classList.remove('closing'); root.style.setProperty('--drag', '0px'); sheet.hidden = false; };
+    const close = () => { sheet.classList.add('closing'); sheet.addEventListener('animationend', () => { sheet.hidden = true; }, { once: true }); };
+    document.getElementById('open').onclick = open;
+    document.getElementById('close').onclick = close;
+    handle.addEventListener('pointerdown', (e) => { dragging = true; startY = e.clientY; });
+    addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      root.style.setProperty('--drag', `${Math.max(0, e.clientY - startY)}px`); // on the root, every descendant restyles; hard stop at the top
+    });
+    addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      if (e.clientY - startY > sheet.offsetHeight / 2) close(); // distance only
+      else root.style.setProperty('--drag', '0px');
+    });
+  } else {
+    const DRAWER = 'cubic-bezier(0.32, 0.72, 0, 1)';
+    let drag = null;
+    const y = () => new DOMMatrix(getComputedStyle(sheet).transform).m42; // the on-screen value, so a grab mid-animation continues from there
+    const animateTo = (to, ms, done) => {
+      if (reduce.matches && to !== 0) { // reduced motion: fade instead of slide
+        sheet.style.transition = 'opacity 150ms ease-out';
+        sheet.style.opacity = '0';
+      } else {
+        sheet.style.transition = `transform ${ms}ms ${DRAWER}`;
+        sheet.style.transform = to ? 'translateY(100%)' : 'translateY(0)';
+      }
+      if (done) sheet.addEventListener('transitionend', done, { once: true });
+    };
+    const close = () => animateTo('100%', 300, () => { if (!drag) { sheet.hidden = true; sheet.style.opacity = ''; } });
+    document.getElementById('open').onclick = () => {
+      sheet.style.transition = 'none';
+      sheet.style.transform = 'translateY(100%)';
+      sheet.hidden = false;
+      sheet.getBoundingClientRect();
+      animateTo(0, 300);
+    };
+    document.getElementById('close').onclick = close;
+    grab.addEventListener('pointerdown', (e) => {
+      if (drag) return; // a second finger is ignored
+      const from = y();
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${from}px)`;
+      drag = { id: e.pointerId, y0: e.clientY, from, samples: [[e.timeStamp, e.clientY]] };
+      grab.setPointerCapture(e.pointerId);
+      grab.dataset.pressed = '';
+    });
+    grab.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      let dy = drag.from + e.clientY - drag.y0;
+      if (dy < 0) dy *= 0.2; // rubber-band past the top
+      sheet.style.transform = `translateY(${dy}px)`;
+      drag.samples.push([e.timeStamp, e.clientY]);
+    });
+    const release = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const recent = drag.samples.filter(([t]) => e.timeStamp - t < 100);
+      const [t0, y0] = recent[0] ?? [e.timeStamp, e.clientY];
+      const velocity = (e.clientY - y0) / Math.max(1, e.timeStamp - t0); // px/ms
+      const travelled = y();
+      drag = null;
+      delete grab.dataset.pressed;
+      if (travelled > sheet.offsetHeight * 0.5 || velocity > 0.11) close(); // distance OR velocity
+      else animateTo(0, 200); // fast snap-back
+    };
+    grab.addEventListener('pointerup', release);
+    grab.addEventListener('pointercancel', release);
+  }
+</script>
+</body>
+</html>

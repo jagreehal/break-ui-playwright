@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Toasts (ask-sonner)</title>
+<style>
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; }
+  @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #eee; } }
+  main { padding: 1.5rem; }
+  button { font: inherit; padding: 0.4rem 0.9rem; margin-right: 0.5rem; }
+  .overlay { position: fixed; inset: 0; background: #0006; z-index: 50; display: grid; place-items: center; }
+  /* Sonner's default rich success text is 4.3:1 on its light background; darken it to pass AA (ask-sonner's styling ladder, step 2). */
+  html [data-sonner-toaster][data-sonner-theme="light"] { --success-text: hsl(140, 100%, 21%); }
+  [role="dialog"] { background: #fff; color: #111; padding: 1.5rem; border-radius: 12px; width: 18rem; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="dist/toast.js"></script>
+</body>
+</html>

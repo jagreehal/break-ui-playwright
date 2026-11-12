@@ -1,0 +1,6 @@
+node_modules
+reports/*
+!reports/index.html
+test-results
+app/dist
+.DS_Store
